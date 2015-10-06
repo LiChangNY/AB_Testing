@@ -9,16 +9,18 @@ So I came to a second set of metrics which include gross conversion and net conv
 
 The answers below correspond to the second set of metrics choices. 
 * Number of cookies: Invariant metric. Since a cookie is the initial unit of diversion, number of cookies should be the same in both control and experiment group. 
-* Number of user-ids: A user-ids is bigger than a cookie, so it’s neither invariant nor evaluation metric. 
+
+* Number of user-ids: It's not invariant because user ids aren't tracked unless a student enrolls in the free trial, thus number of enrollment differ between the control and experiment group. Therefore, number of user-ids could be an evalution metric, but not ideal because it's not normalized.
+
 * Number of clicks: Invariant Metrics. Clicking on “Start Free Trial” happens before the screener, so you would actually want both control and experiment groups to have the same number of clicks to start with. 
+
 * Click-through-probability (#clicks/#cookies): Invariant Metrics. Both number of cookies and number of clicks are invariant metrics, so is click-through-probability. 
 
-* Gross conversion(#enrollment/#clicks): Evaluation metrics. If the hypothesis holds true, the free-trial screener would turn away some students that are unable to commit more than 5 hours a week. Therefore, I might expect a lower gross conversion rate in the experiment group than the control group. 
+* Gross conversion(#enrollment/#clicks): Evaluation metrics. If the hypothesis holds true, the free-trial screener would turn away some students that are unable to commit more than 5 hours a week. Therefore, I might expect a lower gross conversion rate in the experiment group than the control group. A 1% reduction of gross conversion will be considered as practically significant and valid for launching the experiment.
 
-* Retention (#payment/#enrollment): It’s a potential evaluation metrics but I ended up not using it because of unrealistic requirement for minimum pageviews. Had I used it as an evaluation metric, I would expect this metric to be higher in the experiment group because, though both number of payments and enrollments are reduced in the experiment group than control group, the magnitude of decrease in payment should be smaller than that in enrollments.
+* Retention (#payment/#enrollment): It’s a potential evaluation metrics but I ended up not using it because of unrealistic requirement for minimum pageviews. Because of it, I don't really need this metric to be valid in order to launch the experiment. But had I used it as an evaluation metric, I would expect this metric to be higher in the experiment group because, though both number of payments and enrollments are reduced in the experiment group than control group, the magnitude of decrease in payment should be smaller than that in enrollments. 
 
-* Net conversion(#payment/#clicks): This is an evaluation metrics but a tricky one because I would actually want the difference between control and experiment group to be statistically insignificant. In other words, although the free-trial screener results in fewer enrollments (because less-committing students are not enrolling), the number of students who continue after the free trial period should be the same between control and experiment group, which aligns with the goal"—without significantly reducing the number of students to continue past the free trial and eventually complete the course."
-
+* Net conversion(#payment/#clicks): This is an evaluation metrics but a tricky one because I would actually want the negative difference between the control and the experiment group to be statistically insignificant. If net conversion is indeed lower in the experiement group, the difference should not be more than 0.75% for me to launch the experiment. In other words, although the free-trial screener results in fewer enrollments (because less-committing students are not enrolling), the number of students who continue after the free trial period should be the almost same between control and experiment group, which aligns with the goal"—without significantly reducing the number of students to continue past the free trial and eventually complete the course." 
 
 ```{r echo=TRUE}
 get_z_star = function(alpha) {
@@ -46,7 +48,7 @@ required_size = function(s, d_min, Ns=1:100000, alpha=0.05, beta=0.2) {
 
 **For each of your evaluation metrics, indicate whether you think the analytic estimate would be comparable to the the empirical variability, or whether you expect them to be different (in which case it might be worth doing an empirical estimate if there is time). Briefly give your reasoning in each case.**
 
-Both of my evaluation metrics are ratios with clicks as the denominator, so unit of analysis is not the unit of diversion, which would result in a higher variability had I used empirical method. If number of cookies or clicks had been my evaluation metrics, empirical estimate would be more appropriate.
+Both of my evaluation metrics, gross conversion and net conversions, use number of cookies as the denomitor and unit of analysis. Since cookies is also the unit of diversion of this experiment, I can presume that an analytical estimate will be sufficient. 
 
 ```{r echo=TRUE}
 ##analytical estimate of standard deviation
@@ -65,7 +67,7 @@ sqrt(0.1093125*(1-0.1093125) /400)
 
 I tested the sample requirements for two designs. The first one uses gross conversion, retention and net conversion with no Bonferroni. However, this design requires an exorbitant number of pageviews(4,739,879), which means that even if I divert 100% of traffic to this experiment, it would take me about 118 days to get the results. This would be very risky for the company. 
 
-Therefore, I dropped retention from the design but instead used Bonferroni, to be more conservative and account for the correlation between gross conversion and net conversion. The result show that it would only require 822,625 pageviews. 
+Therefore, I dropped retention from the design but instead used Bonferroni, to be more conservative against the Type I error and account for the correlation between gross conversion and net conversion. The result show that it would only require 822,625 pageviews. 
 
 ```{r echo=TRUE}
 ##Calculate Number of Pageviews
@@ -163,11 +165,12 @@ observed <- (experiment_click/experiment) ; print("Observed");print(observed)
 
 As for gross conversion, the confidence interval [-0.0303, -0.0108] does not include either 0 or practical significance (dmin= 0.01), so it's statically and practically significant. 
 
-The confidence interval for net conversion [-0.0126, 0.0028] includes both 0 and practical significance boundary (dmin = 0.0075). Hence, the difference on net conversion is neither statistically nor practically significant. 
+The confidence interval for net conversion [-0.0126, 0.0028] includes both 0 and the negative of the practical significance boundary (dmin = 0.0075). Hence, the difference on net conversion is neither statistically nor practically significant. 
 
 ```{r echo=TRUE}
 ##Effect Sizes Tests
-###Gross conversion = #enrollment / #clicks. pooled p
+###Bonferroni
+####Gross conversion = #enrollment / #clicks. pooled p
 control <- 17293
 control_event <- 3785
 experiment <- 17260
@@ -183,7 +186,35 @@ m <- z * pooled_se
 lower_ci <- d - m; print(lower_ci)
 upper_ci <- d + m; print(upper_ci)
 
-###Net conversion = #payment / #clicks. pooled p
+####Net conversion = #payment / #clicks. pooled p
+pooled_prob <- (control_event + experiment_event) / (control + experiment); print(pooled_prob)
+pooled_se <- sqrt((pooled_prob)*(1-pooled_prob)* (1/control + 1/experiment));print(pooled_se)
+d = experiment_prob - control_prob; print(d)
+dmin = 0.0075
+z <- 2.24
+m <- z * pooled_se
+lower_ci <- d - m; print(lower_ci)
+upper_ci <- d + m; print(upper_ci)
+
+
+###No Bonferroni
+####Gross conversion = #enrollment / #clicks. pooled p
+control <- 17293
+control_event <- 3785
+experiment <- 17260
+experiment_event <- 3423
+control_prob <- control_event/control; print(control_prob)
+experiment_prob <- experiment_event/experiment; print(experiment_prob)
+pooled_prob <- (control_event + experiment_event) / (control + experiment); print(pooled_prob)
+pooled_se <- sqrt((pooled_prob)*(1-pooled_prob)* (1/control + 1/experiment));print(pooled_se)
+d = experiment_prob - control_prob; print(d)
+dmin = 0.01
+z <- 1.96
+m <- z * pooled_se
+lower_ci <- d - m; print(lower_ci)
+upper_ci <- d + m; print(upper_ci)
+
+####Net conversion = #payment / #clicks. pooled p
 control <- 17293
 control_event <- 2033
 experiment <- 17260
@@ -194,10 +225,12 @@ pooled_prob <- (control_event + experiment_event) / (control + experiment); prin
 pooled_se <- sqrt((pooled_prob)*(1-pooled_prob)* (1/control + 1/experiment));print(pooled_se)
 d = experiment_prob - control_prob; print(d)
 dmin = 0.0075
-z <- 2.24
+z <- 1.96
 m <- z * pooled_se
 lower_ci <- d - m; print(lower_ci)
 upper_ci <- d + m; print(upper_ci)
+
+
 ```
 
 
@@ -212,7 +245,7 @@ But the two-tail p value for net conversion is 0.6776, so it didn't pass the sig
 ##Summary
 **State whether you used the Bonferroni correction, and explain why or why not. If there are any discrepancies between the effect size hypothesis tests and the sign tests, describe the discrepancy and why you think it arose.**
 
-Gross conversion measures #enrollment/#clicks and net conversion #payment/#clicks. My experiment used Bonferroni correction because the two metrics are highly correlated. 
+I have two evaluation metrics, gross conversion and net conversions. The mimimum criteria for launching this experiment is at least one of the two is statistically significant. So the chance of at least one metric showing significance by pure chance at the 95% significance level is 9.75% (1-0.95x0.95), which is quite high. Therefore, I chose to use Bonferroni correction, which would reduce the risk by half to 4.94% (1-0.975x0.975).
 
 The results under the sign test and effect size test are consistent with each other, both showing that gross conversion is statistically significant while net conversion not. 
 
@@ -220,9 +253,7 @@ The results under the sign test and effect size test are consistent with each ot
 ##Recommendation
 **Make a recommendation and briefly describe your reasoning.**
      
-The experiment hypothesis states that the goal of the screener is to "set clearer expectations for students upfront, thus reducing the number of frustrated students who left the free trial because they didn't have enough time—without significantly reducing the number of students to continue past the free trial and eventually complete the course. " The experiment result shows that, indeed, gross conversion is lower in the experiment group, meaning that fewer people are signing up after clicking on the free-trial button. Who are those people that opted out signing up? They might be people who would likley feel frustrated, had they signed up for the free trial but not able to continue past the 14-day period. Anyway, even with a lower enrollment, it doesn't affect the net conversion at all, which aligns with the second half of the hypothesis—without significantly reducing the number of students to continue past the free trial. 
-
-Therefore, I wouldn’t object to launching this experiment because it satisfied the short-term goal of this experiment. However, the long-terms goal is to “improve the overall student experience and improve coaches' capacity to support students who are likely to complete the course.” This can’t be measured in this experiment but only through a follow up study. A satisfaction survey should suffice for measuring students’ experience. If hypothesis holds true, we should expect to see a higher satisfaction level in the experiment group. As to the latter, we can measure number of questions per enrolled student that were posted in the forum and tagged as “free-trial” or “free-trial cancellation”. If hypothesis holds true, we should expect to see a lower ratio of questions per student. 
+The experiment hypothesis states that the goal of the screener is, first, to "set clearer expectations for students upfront, thus reducing the number of frustrated students who left the free trial because they didn't have enough time." The experiment result shows that, indeed, gross conversion is lower in the experiment group, meaning that fewer people are signing up after clicking on the free-trial button, so Udacity was able to lower the cost. But as to the second half of goal"—without significantly reducing the number of students to continue past the free trial and eventually complete the course", our results show that the net conversion is not statistically significant, which is fine because Udacity is still gaining from the experiment by lowering the cost, i.e., reducing the number of free-trial students who lacked the commitment. But the confidence interval of net conversion does include the negative of the practial significance boundary, meaning that I can't be confident about the size of this effect at the 95% confidence level. Hence, it would be too risky to recommend for launching this experiment.
 
 ##Follow-Up Experiment
 **Give a high-level description of the follow up experiment you would run, what your hypothesis would be, what metrics you would want to measure, what your unit of diversion would be, and your reasoning for these choices.**
@@ -234,11 +265,11 @@ The message will look something like below.
 
 The hypothesis is that by actively engaging new students in such a small study group, it will make them feel more attached to the community, confident and informed of what kind of support they can get from the Udacity community, therefore increasing the likelihood of continuing past the free-trial period. 
 
-The initial diversion is a cookie on the enrollment confirmation page. After that, a user-id is used to track if a student remain enrolled past the 14-day boundary. 
+The initial unit of diversion is a user-id on the enrollment confirmation page and remain so throughout the experiment, except that a cookie will be used on the free-trial confirmamtion page to track pop-up invitations. Here are the metrics I will be looking at. 
 
-* Number of user-ids: Number of users who complete the checkout and enroll in the free trial. This is an invariant metric as we want the experiment and control group to have the same number of new students.
+* Number of user-ids: Number of users who complete the checkout and enroll in the free trial. This is an invariant metric as we want the experiment and control group to have the same number of new students. 
 
-* Number of cookies: The number of unique cookies to view the “You are enrolled in the free-trial” confirmation page. This is an invariant metric because it’s before the invitation page shows up. 
+* Number of cookies: The number of unique cookies to view the pop-up screen of study group invitation.  This is an invariant metric and will be able to tell us if all the enrolled students have seen this invitation or not. If not, it's possible that the invitation screen is not displaying properly as we have expected or students close the browser too fast.  
 
 * Retention: Number of user-ids to remain enrolled past the 14-day boundary (and thus make at least one payment) divided by number of user-ids that enroll in the free trial. This is an evaluation metric. If the hypothesis holds true, we should expect a higher retention rate in the experiment group. 
 
