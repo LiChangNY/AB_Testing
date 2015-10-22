@@ -1,3 +1,3 @@
 # AB_Testing
 
-Repository to hold AB_Testing projects
+This project used A/B testing techniques to evaluate the effect of a hypothetical experiment and make recommendations for the stakeholders. 
