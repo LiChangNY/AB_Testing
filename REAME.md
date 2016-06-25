@@ -1,4 +1,4 @@
-Experiment Design by Li Chang
+Experiment Design by Lily Chang
 ========================================================
 ##Metric Choice
 **For each metric, explain both why you did or did not use it as an invariant metric and why you did or did not use it as an evaluation metric.**
