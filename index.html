@@ -1,1 +1,295 @@
-Hello, world!
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset='utf-8'>
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <link href='https://fonts.googleapis.com/css?family=Chivo:900' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="stylesheets/github-dark.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="stylesheets/print.css" media="print">
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <title>Ab testing by LiChangNY</title>
+  </head>
+
+  <body>
+    <div id="container">
+      <div class="inner">
+
+        <header>
+          <h1>Ab testing</h1>
+          <h2>Used A/B testing techniques to evaluate the effect of a hypothetical experiment and make recommendations for the stakeholders.</h2>
+        </header>
+
+        <section id="downloads" class="clearfix">
+          <a href="https://github.com/LiChangNY/AB_Testing/zipball/master" id="download-zip" class="button"><span>Download .zip</span></a>
+          <a href="https://github.com/LiChangNY/AB_Testing/tarball/master" id="download-tar-gz" class="button"><span>Download .tar.gz</span></a>
+          <a href="https://github.com/LiChangNY/AB_Testing" id="view-on-github" class="button"><span>View on GitHub</span></a>
+        </section>
+
+        <hr>
+
+        <section id="main_content">
+          <h1>
+<a id="experiment-design-by-li-chang" class="anchor" href="#experiment-design-by-li-chang" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Experiment Design by Li Chang</h1>
+
+<h2>
+<a id="metric-choice" class="anchor" href="#metric-choice" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Metric Choice</h2>
+
+<p><strong>For each metric, explain both why you did or did not use it as an invariant metric and why you did or did not use it as an evaluation metric.</strong></p>
+
+<p>For invariant metrics, the selection process was no-brainer: Number of cookies, number of clicks and click-through-probability are my choices. However, choosing evaluation metrics was a bit complicated. My initial set of choice includes gross conversion, retention, and net conversion. However, this would require at least 4,739,879 pageviews in total for control and experiment groups, that is, about 118 days at 100% of daily traffic diverted to this experiment, which is too long for Udacity.</p>
+
+<p>So I came to a second set of metrics which include gross conversion and net conversion only because retention requires a lot more pageviews. The minimum pageviews required is cut to only 679,300 (detailed calculations provided below.)</p>
+
+<p>The answers below correspond to the second set of metrics choices. Both gross conversion and net conversion are required to be valid to launch the experiment.</p>
+
+<ul>
+<li><p>Number of cookies: Invariant metric. Since a cookie is the initial unit of diversion, number of cookies should be the same in both control and experiment group. </p></li>
+<li><p>Number of user-ids: It's not invariant because user ids aren't tracked unless a student enrolls in the free trial, thus number of enrollment differ between the control and experiment group. Therefore, number of user-ids could be an evalution metric, but not ideal because it's not normalized.</p></li>
+<li><p>Number of clicks: Invariant Metrics. Clicking on “Start Free Trial” happens before the screener, so you would actually want both control and experiment groups to have the same number of clicks to start with. </p></li>
+<li><p>Click-through-probability (#clicks/#cookies): Invariant Metrics. Both number of cookies and number of clicks are invariant metrics, so is click-through-probability. </p></li>
+<li><p>Gross conversion(#enrollment/#clicks): Evaluation metrics. If the hypothesis holds true, the free-trial screener would turn away some students that are unable to commit more than 5 hours a week. Therefore, I might expect a lower gross conversion rate in the experiment group than the control group. A 1% reduction of gross conversion will be considered as practically significant and valid for launching the experiment.</p></li>
+<li><p>Retention (#payment/#enrollment): It’s a potential evaluation metrics but I ended up not using it because of unrealistic requirement for minimum pageviews. Because of it, I don't really need this metric to be valid in order to launch the experiment. But had I used it as an evaluation metric, I would expect this metric to be higher in the experiment group because, though both number of payments and enrollments are reduced in the experiment group than control group, the magnitude of decrease in payment should be smaller than that in enrollments. </p></li>
+<li><p>Net conversion(#payment/#clicks): Although the free-trial screener results in fewer enrollments (because less-committing students are not enrolling), I would anticipate a higher share of users who clicked on the free trial to continue past the free-trial, to justify the launch of this experiment. This would align with the second half of the goal"—without significantly reducing the number of students to continue past the free trial and eventually complete the course." </p></li>
+</ul>
+
+<div class="highlight highlight-source-r"><pre><span class="pl-v">get_z_star</span> <span class="pl-k">=</span> <span class="pl-k">function</span>(<span class="pl-smi">alpha</span>) {
+    <span class="pl-k">return</span>(<span class="pl-k">-</span>qnorm(<span class="pl-smi">alpha</span> <span class="pl-k">/</span> <span class="pl-c1">2</span>))
+}
+
+<span class="pl-v">get_beta</span> <span class="pl-k">=</span> <span class="pl-k">function</span>(<span class="pl-smi">z_star</span>, <span class="pl-smi">s</span>, <span class="pl-smi">d_min</span>, <span class="pl-smi">N</span>) {
+    <span class="pl-v">SE</span> <span class="pl-k">=</span> <span class="pl-smi">s</span> <span class="pl-k">/</span>  sqrt(<span class="pl-smi">N</span>)
+    <span class="pl-k">return</span>(pnorm(<span class="pl-smi">z_star</span> <span class="pl-k">*</span> <span class="pl-smi">SE</span>, <span class="pl-v">mean</span><span class="pl-k">=</span><span class="pl-smi">d_min</span>, <span class="pl-v">sd</span><span class="pl-k">=</span><span class="pl-smi">SE</span>))
+}
+
+<span class="pl-v">required_size</span> <span class="pl-k">=</span> <span class="pl-k">function</span>(<span class="pl-smi">s</span>, <span class="pl-smi">d_min</span>, <span class="pl-v">Ns</span><span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">100000</span>, <span class="pl-v">alpha</span><span class="pl-k">=</span><span class="pl-c1">0.05</span>, <span class="pl-v">beta</span><span class="pl-k">=</span><span class="pl-c1">0.2</span>) {
+    <span class="pl-k">for</span> (<span class="pl-smi">N</span> <span class="pl-k">in</span> <span class="pl-smi">Ns</span>) {
+        <span class="pl-k">if</span> (get_beta(get_z_star(<span class="pl-smi">alpha</span>), <span class="pl-smi">s</span>, <span class="pl-smi">d_min</span>, <span class="pl-smi">N</span>) <span class="pl-k">&lt;</span><span class="pl-k">=</span> <span class="pl-smi">beta</span>) {
+            <span class="pl-k">return</span>(<span class="pl-smi">N</span>)
+        }
+    }
+
+    <span class="pl-k">return</span>(<span class="pl-k">-</span><span class="pl-c1">1</span>)
+}</pre></div>
+
+<h2>
+<a id="measuring-standard-deviation" class="anchor" href="#measuring-standard-deviation" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Measuring Standard Deviation</h2>
+
+<p>*<em>List the standard deviation of each of your evaluation metrics. (These should be the answers from the "Calculating standard deviation" quiz.) *</em></p>
+
+<p><strong>For each of your evaluation metrics, indicate whether you think the analytic estimate would be comparable to the the empirical variability, or whether you expect them to be different (in which case it might be worth doing an empirical estimate if there is time). Briefly give your reasoning in each case.</strong></p>
+
+<p>Both of my evaluation metrics, gross conversion and net conversions, use number of cookies as the denomitor and unit of analysis. Since cookies is also the unit of diversion of this experiment, I can presume that an analytical estimate will be sufficient. </p>
+
+<div class="highlight highlight-source-r"><pre><span class="pl-c">##analytical estimate of standard deviation</span>
+print(<span class="pl-s"><span class="pl-pds">"</span>Gross Converstion SD: <span class="pl-pds">"</span></span>)
+sqrt(<span class="pl-c1">0.20625</span><span class="pl-k">*</span>(<span class="pl-c1">1</span><span class="pl-k">-</span><span class="pl-c1">0.20625</span>) <span class="pl-k">/</span> <span class="pl-c1">400</span>)
+<span class="pl-c">#Uncomment below if you want to see the standard deviation of retention.</span>
+<span class="pl-c">#print("Retention SD:")</span>
+<span class="pl-c">#sqrt(0.53*(1-0.53) / (660/3200 * 400))</span>
+print(<span class="pl-s"><span class="pl-pds">"</span>Net Conversion SD:<span class="pl-pds">"</span></span>)
+sqrt(<span class="pl-c1">0.1093125</span><span class="pl-k">*</span>(<span class="pl-c1">1</span><span class="pl-k">-</span><span class="pl-c1">0.1093125</span>) <span class="pl-k">/</span><span class="pl-c1">400</span>)</pre></div>
+
+<h2>
+<a id="sizing" class="anchor" href="#sizing" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Sizing</h2>
+
+<h3>
+<a id="number-of-samples-vs-power" class="anchor" href="#number-of-samples-vs-power" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Number of Samples vs. Power</h3>
+
+<p><strong>Indicate whether you will use the Bonferroni correction during your analysis phase, and give the number of pageviews you will need to power you experiment appropriately. (These should be the answers from the "Calculating Number of Pageviews" quiz.)</strong></p>
+
+<p>I tested the sample requirements for two designs. The first one uses gross conversion, retention and net conversion with no Bonferroni. However, this design requires an exorbitant number of pageviews(4,739,879), which means that even if I divert 100% of traffic to this experiment, it would take me about 118 days to get the results. This would be very risky for the company. </p>
+
+<p>Therefore, I dropped retention from the design and now it would only require 679,300 pageviews. </p>
+
+<div class="highlight highlight-source-r"><pre><span class="pl-c">##Calculate Number of Pageviews</span>
+<span class="pl-smi">sample_size_gross</span> <span class="pl-k">&lt;-</span> required_size(<span class="pl-v">s</span><span class="pl-k">=</span> sqrt(<span class="pl-c1">0.20625</span><span class="pl-k">*</span>(<span class="pl-c1">1</span><span class="pl-k">-</span><span class="pl-c1">0.20625</span>) <span class="pl-k">*</span> <span class="pl-c1">2</span>), <span class="pl-v">d_min</span> <span class="pl-k">=</span> <span class="pl-c1">0.01</span>, <span class="pl-v">alpha</span> <span class="pl-k">=</span> <span class="pl-c1">0.05</span>, <span class="pl-v">beta</span> <span class="pl-k">=</span> <span class="pl-c1">0.2</span> )
+<span class="pl-smi">CTP</span> <span class="pl-k">&lt;-</span> <span class="pl-c1">0.08</span>
+print(<span class="pl-s"><span class="pl-pds">"</span>Total pageviews (Gross Conversion): <span class="pl-pds">"</span></span>)
+<span class="pl-smi">sample_size_gross</span> <span class="pl-k">/</span> <span class="pl-smi">CTP</span> <span class="pl-k">*</span><span class="pl-c1">2</span>
+
+<span class="pl-smi">sample_size_retention</span> <span class="pl-k">&lt;-</span> required_size(<span class="pl-v">s</span><span class="pl-k">=</span>sqrt(<span class="pl-c1">0.53</span><span class="pl-k">*</span>(<span class="pl-c1">1</span><span class="pl-k">-</span><span class="pl-c1">0.53</span>) <span class="pl-k">*</span> <span class="pl-c1">2</span>), <span class="pl-v">d_min</span> <span class="pl-k">=</span> <span class="pl-c1">0.01</span>, <span class="pl-v">alpha</span> <span class="pl-k">=</span> <span class="pl-c1">0.05</span>, <span class="pl-v">beta</span> <span class="pl-k">=</span> <span class="pl-c1">0.2</span> )
+<span class="pl-smi">retention_baseline</span> <span class="pl-k">&lt;-</span> <span class="pl-c1">660</span><span class="pl-k">/</span><span class="pl-c1">40000</span>
+print(<span class="pl-s"><span class="pl-pds">"</span>Total pageviews (Retention): <span class="pl-pds">"</span></span>)
+<span class="pl-smi">sample_size_retention</span> <span class="pl-k">/</span> <span class="pl-smi">retention_baseline</span> <span class="pl-k">*</span><span class="pl-c1">2</span>
+
+<span class="pl-smi">sample_size_net</span> <span class="pl-k">&lt;-</span> required_size(<span class="pl-v">s</span><span class="pl-k">=</span> sqrt(<span class="pl-c1">0.1093125</span><span class="pl-k">*</span>(<span class="pl-c1">1</span><span class="pl-k">-</span><span class="pl-c1">0.1093125</span>) <span class="pl-k">*</span> <span class="pl-c1">2</span>), <span class="pl-v">d_min</span> <span class="pl-k">=</span> <span class="pl-c1">0.0075</span>, <span class="pl-v">alpha</span> <span class="pl-k">=</span> <span class="pl-c1">0.05</span>, <span class="pl-v">beta</span> <span class="pl-k">=</span> <span class="pl-c1">0.2</span> )
+print(<span class="pl-s"><span class="pl-pds">"</span>Total pageviews (Net Conversion): <span class="pl-pds">"</span></span>)
+<span class="pl-smi">sample_size_net</span> <span class="pl-k">/</span> <span class="pl-smi">CTP</span> <span class="pl-k">*</span> <span class="pl-c1">2</span></pre></div>
+
+<h3>
+<a id="duration-vs-exposure" class="anchor" href="#duration-vs-exposure" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Duration vs. Exposure</h3>
+
+<p><strong>Indicate what fraction of traffic you would divert to this experiment and, given this, how many days you would need to run the experiment. (These should be the answers from the "Choosing Duration and Exposure" quiz.)</strong></p>
+
+<p><strong>Give your reasoning for the fraction you chose to divert. How risky do you think this experiment would be for Udacity?</strong></p>
+
+<p>One rule of thumb I learned about duration from Udacity videos is that you might want to run your experiment long enough to cover a mix of weekends and weekdays. Further, the first payment incurs after 14 days of enrollment. In order to observe if the earliest enrollees have made the payments, we should let the experiment run for 2 weeks at least.</p>
+
+<p>In terms of exposure, I think it's low-risk because it’s just a pop-up screener that does not have significant impact on the database or any backend systems. Even if students are suggested not to enroll in the free trial, they are not obligated to abide by the rule. They could still enroll in the free trial or access free materials. Therefore, I think I can expose 80% of the traffic to this experiment, which will give me a total of 22 days, enough to cover three weeks.</p>
+
+<h2>
+<a id="experiment-analysis" class="anchor" href="#experiment-analysis" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Experiment Analysis</h2>
+
+<h3>
+<a id="sanity-checks" class="anchor" href="#sanity-checks" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Sanity Checks</h3>
+
+<p><strong>For each of your invariant metrics, give the 95% confidence interval for the value you expect to observe, the actual observed value, and whether the metric passes your sanity check. (These should be the answers from the "Sanity Checks" quiz.)</strong></p>
+
+<p><strong>For any sanity check that did not pass, explain your best guess as to what went wrong based on the day-by-day data. Do not proceed to the rest of the analysis unless all sanity checks pass.</strong></p>
+
+<p>From this point on, I will check against the data from the experiment: <a href="https://docs.google.com/spreadsheets/d/1Mu5u9GrybDdska-ljPXyBjTpdZIUev_6i7t4LRDfXM8/edit#gid=0">https://docs.google.com/spreadsheets/d/1Mu5u9GrybDdska-ljPXyBjTpdZIUev_6i7t4LRDfXM8/edit#gid=0</a></p>
+
+<p>The calculations are provided below. Of all three invariant metrics, that is, number of cookies, number of clicks, and CTR, the observed values are included in confidence interval, meaning that the difference between control and experiment group is not statistically significant. So they passed sanity check. </p>
+
+<div class="highlight highlight-source-r"><pre><span class="pl-c">##Sanity Checks</span>
+<span class="pl-c">###Number of cookies</span>
+print(<span class="pl-s"><span class="pl-pds">"</span>Number of cookies<span class="pl-pds">"</span></span>)
+<span class="pl-smi">prob</span> <span class="pl-k">&lt;-</span> <span class="pl-c1">0.5</span>
+<span class="pl-smi">control</span> <span class="pl-k">&lt;-</span> <span class="pl-c1">345543</span> 
+<span class="pl-smi">experiment</span> <span class="pl-k">&lt;-</span> <span class="pl-c1">344660</span>
+<span class="pl-smi">z</span> <span class="pl-k">&lt;-</span> <span class="pl-c1">1.96</span>
+<span class="pl-smi">se</span> <span class="pl-k">&lt;-</span> sqrt( <span class="pl-smi">prob</span> <span class="pl-k">*</span> (<span class="pl-c1">1</span><span class="pl-k">-</span><span class="pl-smi">prob</span>) <span class="pl-k">/</span> (<span class="pl-smi">control</span> <span class="pl-k">+</span> <span class="pl-smi">experiment</span>))
+<span class="pl-smi">m</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">z</span> <span class="pl-k">*</span> <span class="pl-smi">se</span>
+<span class="pl-smi">lower_ci</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">prob</span> <span class="pl-k">-</span> <span class="pl-smi">m</span>; print(<span class="pl-s"><span class="pl-pds">"</span>Lower bound<span class="pl-pds">"</span></span>); print(<span class="pl-smi">lower_ci</span>)
+<span class="pl-smi">upper_ci</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">prob</span> <span class="pl-k">+</span> <span class="pl-smi">m</span>; print(<span class="pl-s"><span class="pl-pds">"</span>Upper bound<span class="pl-pds">"</span></span>); print(<span class="pl-smi">upper_ci</span>)
+<span class="pl-smi">observed</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">control</span><span class="pl-k">/</span>(<span class="pl-smi">control</span> <span class="pl-k">+</span> <span class="pl-smi">experiment</span>); print(<span class="pl-s"><span class="pl-pds">"</span>Observed<span class="pl-pds">"</span></span>); print(<span class="pl-smi">observed</span>)
+
+<span class="pl-c">###Number of clicks</span>
+print(<span class="pl-s"><span class="pl-pds">"</span>Number of clicks<span class="pl-pds">"</span></span>)
+<span class="pl-smi">prob</span> <span class="pl-k">&lt;-</span> <span class="pl-c1">0.5</span>
+<span class="pl-smi">control</span> <span class="pl-k">&lt;-</span> <span class="pl-c1">28378</span> 
+<span class="pl-smi">experiment</span> <span class="pl-k">&lt;-</span> <span class="pl-c1">28325</span>
+<span class="pl-smi">z</span> <span class="pl-k">&lt;-</span> <span class="pl-c1">1.96</span>
+<span class="pl-smi">se</span> <span class="pl-k">&lt;-</span> sqrt( <span class="pl-smi">prob</span> <span class="pl-k">*</span> (<span class="pl-c1">1</span><span class="pl-k">-</span><span class="pl-smi">prob</span>) <span class="pl-k">/</span> (<span class="pl-smi">control</span> <span class="pl-k">+</span> <span class="pl-smi">experiment</span>))
+<span class="pl-smi">m</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">z</span> <span class="pl-k">*</span> <span class="pl-smi">se</span>
+<span class="pl-smi">lower_ci</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">prob</span> <span class="pl-k">-</span> <span class="pl-smi">m</span>; print(<span class="pl-s"><span class="pl-pds">"</span>Lower bound<span class="pl-pds">"</span></span>);print(<span class="pl-smi">lower_ci</span>)
+<span class="pl-smi">upper_ci</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">prob</span> <span class="pl-k">+</span> <span class="pl-smi">m</span>; print(<span class="pl-s"><span class="pl-pds">"</span>Upper bound<span class="pl-pds">"</span></span>); print(<span class="pl-smi">upper_ci</span>)
+<span class="pl-smi">observed</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">control</span><span class="pl-k">/</span>(<span class="pl-smi">control</span> <span class="pl-k">+</span> <span class="pl-smi">experiment</span>); print(<span class="pl-s"><span class="pl-pds">"</span>Observed<span class="pl-pds">"</span></span>); print(<span class="pl-smi">observed</span>)
+
+<span class="pl-c">###CTR</span>
+print(<span class="pl-s"><span class="pl-pds">"</span>CTR<span class="pl-pds">"</span></span>)
+<span class="pl-smi">control</span> <span class="pl-k">&lt;-</span> <span class="pl-c1">345543</span> 
+<span class="pl-smi">experiment</span> <span class="pl-k">&lt;-</span> <span class="pl-c1">344660</span>
+<span class="pl-smi">control_click</span> <span class="pl-k">&lt;-</span> <span class="pl-c1">28378</span>  
+<span class="pl-smi">experiment_click</span> <span class="pl-k">&lt;-</span>  <span class="pl-c1">28325</span>
+<span class="pl-smi">prob</span> <span class="pl-k">&lt;-</span> (<span class="pl-smi">control_click</span> <span class="pl-k">/</span> <span class="pl-smi">control</span>)
+<span class="pl-smi">z</span> <span class="pl-k">&lt;-</span> <span class="pl-c1">1.96</span>
+<span class="pl-smi">se</span> <span class="pl-k">&lt;-</span> sqrt( <span class="pl-smi">prob</span> <span class="pl-k">*</span> (<span class="pl-c1">1</span><span class="pl-k">-</span><span class="pl-smi">prob</span>) <span class="pl-k">/</span> <span class="pl-smi">control</span>)
+<span class="pl-smi">m</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">z</span> <span class="pl-k">*</span> <span class="pl-smi">se</span>
+<span class="pl-smi">lower_ci</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">prob</span> <span class="pl-k">-</span> <span class="pl-smi">m</span>; print(<span class="pl-s"><span class="pl-pds">"</span>Lower bound<span class="pl-pds">"</span></span>); print(<span class="pl-smi">lower_ci</span>)
+<span class="pl-smi">upper_ci</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">prob</span> <span class="pl-k">+</span> <span class="pl-smi">m</span>; print(<span class="pl-s"><span class="pl-pds">"</span>Upper bound<span class="pl-pds">"</span></span>); print(<span class="pl-smi">upper_ci</span>)
+<span class="pl-smi">observed</span> <span class="pl-k">&lt;-</span> (<span class="pl-smi">experiment_click</span><span class="pl-k">/</span><span class="pl-smi">experiment</span>) ; print(<span class="pl-s"><span class="pl-pds">"</span>Observed<span class="pl-pds">"</span></span>);print(<span class="pl-smi">observed</span>)</pre></div>
+
+<h2>
+<a id="result-analysis" class="anchor" href="#result-analysis" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Result Analysis</h2>
+
+<h3>
+<a id="effect-size-tests" class="anchor" href="#effect-size-tests" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Effect Size Tests</h3>
+
+<p><strong>For each of your evaluation metrics, give a 95% confidence interval around the difference between the experiment and control groups. Indicate whether each metric is statistically and practically significant. (These should be the answers from the "Effect Size Tests" quiz.)</strong></p>
+
+<p>At the 95% significance level, the confidence interval [-0.0291, -0.0120] of gross conversion does not include either 0 or practical significance (dmin= 0.01), so it's statically and practically significant. </p>
+
+<p>The confidence interval for net conversion [-0.0116, 0.0019] includes both 0 and the negative of the practical significance boundary (dmin = 0.0075). Hence, the difference on net conversion is neither statistically nor practically significant. </p>
+
+<div class="highlight highlight-source-r"><pre><span class="pl-c">##Effect Sizes Tests: No Bonferroni</span>
+<span class="pl-c">####Gross conversion = #enrollment / #clicks. pooled p</span>
+<span class="pl-smi">control</span> <span class="pl-k">&lt;-</span> <span class="pl-c1">17293</span>
+<span class="pl-smi">control_event</span> <span class="pl-k">&lt;-</span> <span class="pl-c1">3785</span>
+<span class="pl-smi">experiment</span> <span class="pl-k">&lt;-</span> <span class="pl-c1">17260</span>
+<span class="pl-smi">experiment_event</span> <span class="pl-k">&lt;-</span> <span class="pl-c1">3423</span>
+<span class="pl-smi">control_prob</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">control_event</span><span class="pl-k">/</span><span class="pl-smi">control</span>; print(<span class="pl-smi">control_prob</span>)
+<span class="pl-smi">experiment_prob</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">experiment_event</span><span class="pl-k">/</span><span class="pl-smi">experiment</span>; print(<span class="pl-smi">experiment_prob</span>)
+<span class="pl-smi">pooled_prob</span> <span class="pl-k">&lt;-</span> (<span class="pl-smi">control_event</span> <span class="pl-k">+</span> <span class="pl-smi">experiment_event</span>) <span class="pl-k">/</span> (<span class="pl-smi">control</span> <span class="pl-k">+</span> <span class="pl-smi">experiment</span>); print(<span class="pl-smi">pooled_prob</span>)
+<span class="pl-smi">pooled_se</span> <span class="pl-k">&lt;-</span> sqrt((<span class="pl-smi">pooled_prob</span>)<span class="pl-k">*</span>(<span class="pl-c1">1</span><span class="pl-k">-</span><span class="pl-smi">pooled_prob</span>)<span class="pl-k">*</span> (<span class="pl-c1">1</span><span class="pl-k">/</span><span class="pl-smi">control</span> <span class="pl-k">+</span> <span class="pl-c1">1</span><span class="pl-k">/</span><span class="pl-smi">experiment</span>));print(<span class="pl-smi">pooled_se</span>)
+<span class="pl-v">d</span> <span class="pl-k">=</span> <span class="pl-smi">experiment_prob</span> <span class="pl-k">-</span> <span class="pl-smi">control_prob</span>; print(<span class="pl-smi">d</span>)
+<span class="pl-v">dmin</span> <span class="pl-k">=</span> <span class="pl-c1">0.01</span>
+<span class="pl-smi">z</span> <span class="pl-k">&lt;-</span> <span class="pl-c1">1.96</span>
+<span class="pl-smi">m</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">z</span> <span class="pl-k">*</span> <span class="pl-smi">pooled_se</span>
+<span class="pl-smi">lower_ci</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">d</span> <span class="pl-k">-</span> <span class="pl-smi">m</span>; print(<span class="pl-smi">lower_ci</span>)
+<span class="pl-smi">upper_ci</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">d</span> <span class="pl-k">+</span> <span class="pl-smi">m</span>; print(<span class="pl-smi">upper_ci</span>)
+
+<span class="pl-c">####Net conversion = #payment / #clicks. pooled p</span>
+<span class="pl-smi">control</span> <span class="pl-k">&lt;-</span> <span class="pl-c1">17293</span>
+<span class="pl-smi">control_event</span> <span class="pl-k">&lt;-</span> <span class="pl-c1">2033</span>
+<span class="pl-smi">experiment</span> <span class="pl-k">&lt;-</span> <span class="pl-c1">17260</span>
+<span class="pl-smi">experiment_event</span> <span class="pl-k">&lt;-</span> <span class="pl-c1">1945</span>
+<span class="pl-smi">control_prob</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">control_event</span><span class="pl-k">/</span><span class="pl-smi">control</span>; print(<span class="pl-smi">control_prob</span>)
+<span class="pl-smi">experiment_prob</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">experiment_event</span><span class="pl-k">/</span><span class="pl-smi">experiment</span>; print(<span class="pl-smi">experiment_prob</span>)
+<span class="pl-smi">pooled_prob</span> <span class="pl-k">&lt;-</span> (<span class="pl-smi">control_event</span> <span class="pl-k">+</span> <span class="pl-smi">experiment_event</span>) <span class="pl-k">/</span> (<span class="pl-smi">control</span> <span class="pl-k">+</span> <span class="pl-smi">experiment</span>); print(<span class="pl-smi">pooled_prob</span>)
+<span class="pl-smi">pooled_se</span> <span class="pl-k">&lt;-</span> sqrt((<span class="pl-smi">pooled_prob</span>)<span class="pl-k">*</span>(<span class="pl-c1">1</span><span class="pl-k">-</span><span class="pl-smi">pooled_prob</span>)<span class="pl-k">*</span> (<span class="pl-c1">1</span><span class="pl-k">/</span><span class="pl-smi">control</span> <span class="pl-k">+</span> <span class="pl-c1">1</span><span class="pl-k">/</span><span class="pl-smi">experiment</span>));print(<span class="pl-smi">pooled_se</span>)
+<span class="pl-v">d</span> <span class="pl-k">=</span> <span class="pl-smi">experiment_prob</span> <span class="pl-k">-</span> <span class="pl-smi">control_prob</span>; print(<span class="pl-smi">d</span>)
+<span class="pl-v">dmin</span> <span class="pl-k">=</span> <span class="pl-c1">0.0075</span>
+<span class="pl-smi">z</span> <span class="pl-k">&lt;-</span> <span class="pl-c1">1.96</span>
+<span class="pl-smi">m</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">z</span> <span class="pl-k">*</span> <span class="pl-smi">pooled_se</span>
+<span class="pl-smi">lower_ci</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">d</span> <span class="pl-k">-</span> <span class="pl-smi">m</span>; print(<span class="pl-smi">lower_ci</span>)
+<span class="pl-smi">upper_ci</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">d</span> <span class="pl-k">+</span> <span class="pl-smi">m</span>; print(<span class="pl-smi">upper_ci</span>)</pre></div>
+
+<h3>
+<a id="sign-tests" class="anchor" href="#sign-tests" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Sign Tests</h3>
+
+<p><strong>For each of your evaluation metrics, do a sign test using the day-by-day data, and report the p-value of the sign test and whether the result is statistically significant. (These should be the answers from the "Sign Tests" quiz.)</strong></p>
+
+<p>The final project results show that the experiment group underperforms the control group in gross conversion in 19 out of 23 days, while net conversion in 13 out of 23 days.  </p>
+
+<p>Using <a href="http://graphpad.com/quickcalcs/binomial1.cfm">http://graphpad.com/quickcalcs/binomial1.cfm</a>, it shows that the two-tail p value for gross conversion is 0.0026, which is smaller than alpha (0.05), indicating the result is statistically significant. 
+But the two-tail p value for net conversion is 0.6776, so it didn't pass the sign test.</p>
+
+<h2>
+<a id="summary" class="anchor" href="#summary" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Summary</h2>
+
+<p><strong>State whether you used the Bonferroni correction, and explain why or why not. If there are any discrepancies between the effect size hypothesis tests and the sign tests, describe the discrepancy and why you think it arose.</strong></p>
+
+<p>The Bonferroni correction is only used to reduce the chances of identifying at least one significant result due to chance at the presence of multiple metrics. Because my experiments require both of two evaluation metrics, gross conversion and net conversion, to be valid for launching, no Bonferroni correction was used.</p>
+
+<p>The results under the sign test and effect size test are consistent with each other, both showing that gross conversion is statistically significant while net conversion not. </p>
+
+<h2>
+<a id="recommendation" class="anchor" href="#recommendation" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Recommendation</h2>
+
+<p><strong>Make a recommendation and briefly describe your reasoning.</strong></p>
+
+<p>The experiment hypothesis states that the goal of the screener is, first, to "set clearer expectations for students upfront, thus reducing the number of frustrated students who left the free trial because they didn't have enough time." The experiment result shows that, indeed, gross conversion is lower in the experiment group, meaning that fewer people are signing up after clicking on the free-trial button, so Udacity was able to lower the cost. But as to the second half of goal"—without significantly reducing the number of students to continue past the free trial and eventually complete the course", our results show that the net conversion is not statistically significant, and the confidence interval of net conversion does include the negative of the practial significance boundary, meaning that I can't be confident about the size of this effect at the 95% confidence level. Hence, it would be too risky to recommend for launching this experiment.</p>
+
+<h2>
+<a id="follow-up-experiment" class="anchor" href="#follow-up-experiment" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Follow-Up Experiment</h2>
+
+<p><strong>Give a high-level description of the follow up experiment you would run, what your hypothesis would be, what metrics you would want to measure, what your unit of diversion would be, and your reasoning for these choices.</strong></p>
+
+<p>After a student completes the check-out process and lands in the “You are enrolled in the free-trial” confirmation page, a screen will pop up to invite him to join an online study group. The study group is led by a veteran Udacity student and ranges from 15-20 people (a class size) to keep students close. The student can either sign up now or join the general discussion forum later. To ensure that the pop-ups are shown properly, the student will have to press "Yes to join" or "Not now" to proceed. 
+The message will look something like below. 
+“Hi, XXX. Welcome to Udacity XXXX course. I am XXX, the tutor of study group XXX and a Udacity alum as well. This Udacity study group is a small(10-15 people), interactive online community where you will be able to share experiences with your peer students who start around the same time as you, post questions, attend office hours, and discuss your course progress. If interested, please click ‘Join’ button below. If not, you can always interact with students and coaches later on the general discussion forum. “</p>
+
+<p>The hypothesis is that by actively engaging new students in such a small study group, it will make them feel more attached to the community, confident and informed of what kind of support they can get from the Udacity community, therefore increasing the likelihood of continuing past the free-trial period. </p>
+
+<p>The initial unit of diversion is a user-id on the enrollment confirmation page and remain so throughout the experiment. Here are the metrics I will be looking at. </p>
+
+<ul>
+<li><p>Number of user-ids: Number of users who complete the checkout and enroll in the free trial. This is an invariant metric as we want the experiment and control group to have the same number of new students. </p></li>
+<li><p>Retention: Number of user-ids to remain enrolled past the 14-day boundary (and thus make at least one payment) divided by number of user-ids that enroll in the free trial. This is an evaluation metric. If the hypothesis holds true, we should expect a higher retention rate in the experiment group. </p></li>
+</ul>
+
+<h2>
+<a id="resources" class="anchor" href="#resources" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Resources</h2>
+
+<ul>
+<li><a href="http://www.aaos.org/news/aaosnow/apr12/research7.asp">http://www.aaos.org/news/aaosnow/apr12/research7.asp</a></li>
+<li><a href="http://graphpad.com/quickcalcs/binomial1.cfm">http://graphpad.com/quickcalcs/binomial1.cfm</a></li>
+<li><a href="http://www.evanmiller.org/ab-testing/">http://www.evanmiller.org/ab-testing/</a></li>
+<li><a href="https://rstudio-pubs-static.s3.amazonaws.com/98017_0cc8015eeef84fbdbe4ebf893e31e1a3.html">https://rstudio-pubs-static.s3.amazonaws.com/98017_0cc8015eeef84fbdbe4ebf893e31e1a3.html</a></li>
+</ul>
+        </section>
+
+        <footer>
+          Ab testing is maintained by <a href="https://github.com/LiChangNY">LiChangNY</a><br>
+          This page was generated by <a href="https://pages.github.com">GitHub Pages</a>. Tactile theme by <a href="https://twitter.com/jasonlong">Jason Long</a>.
+        </footer>
+
+        
+      </div>
+    </div>
+  </body>
+</html>
