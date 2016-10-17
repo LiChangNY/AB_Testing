@@ -1,5 +1,8 @@
 Experiment Design by Lily Chang
 ========================================================
+
+Click [here](https://docs.google.com/document/u/1/d/1aCquhIqsUApgsxQ8-SQBAigFDcfWVVohLEXcV6jWbdI/pub?embedded=Tru) to view information on the Free Trial Screener experiment. 
+
 ##Metric Choice
 **For each metric, explain both why you did or did not use it as an invariant metric and why you did or did not use it as an evaluation metric.**
 
